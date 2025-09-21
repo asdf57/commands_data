@@ -1,2 +1,4 @@
+#!/usr/bin/env bash
+
 ssh beelink -- ps aux
 ssh beelink -- whoami
