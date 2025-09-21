@@ -4,4 +4,4 @@ set -x
 ssh -n beelink -- ps aux
 ssh -n beelink -- whoami
 ssh -n beelink -- uptime
-
+ssh -n beelink -- ansible -i inventory/inventory.yml -om shell -a "echo hi"
