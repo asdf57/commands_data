@@ -1,2 +1,2 @@
-ps aux
-whoami
+ssh beelink -- ps aux
+ssh beelink -- whoami
