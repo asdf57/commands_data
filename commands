@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-ssh beelink -- whoami
+ssh beelink -- echo 1
+ssh beelink -- echo 2
