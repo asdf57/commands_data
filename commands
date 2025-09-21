@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 
-ssh beelink -- echo 1
-ssh beelink -- echo 2
+ssh beelink -- echo 1 || echo "ssh 1 failed"
+ssh beelink -- echo 2 || echo "ssh 2 failed"
