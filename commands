@@ -1,1 +1,2 @@
 ansible -i inventory/inventory.yml -om shell -a "echo hi" servers
+ansible -i inventory/inventory.yml -om shell -a "uptime" servers
