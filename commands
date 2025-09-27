@@ -1,7 +1,4 @@
 set -x
-echo "$PATH"
-pwd
-ls -al /workspace
 export PATH="$(pwd)/.venv/bin:$PATH"
 echo "$PATH"
 source $(pwd)/.venv/bin
