@@ -4,4 +4,5 @@ pwd
 ls -al /workspace
 export PATH="$(pwd)/.venv/bin:$PATH"
 echo "$PATH"
-ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e "vault_root_password=$VAULT_TOKEN"
+source $(pwd)/.venv/bin
+ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e "vault_root_password=$VAULT_TOKEN" -e ansible_python_interpreter=python3
