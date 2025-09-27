@@ -5,4 +5,5 @@ ln -s /workspace/.venv/bin/python /usr/bin/python
 ln -s /workspace/.venv/bin/python /usr/bin/python3
 which python
 export PATH="/workspace/.venv/bin:$PATH"
+export PATH="$(pwd)/.venv/bin:$PATH"
 ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e "vault_root_password=$VAULT_TOKEN"
