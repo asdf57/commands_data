@@ -3,4 +3,6 @@ export PATH="$(pwd)/.venv/bin:$PATH"
 which python
 source $(pwd)/.venv/bin/activate
 ls -al $(pwd)/.venv/bin
+ls -al
+pwd
 ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e "vault_root_password=$VAULT_TOKEN" -e ansible_python_interpreter=python3
