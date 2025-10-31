@@ -1,2 +1,2 @@
-uptime
-ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml --limit beelink -e "vault_root_password=$VAULT_TOKEN" -e should_wipe=true
+pwd
+ls -al
