@@ -1,120 +1,65 @@
 ssh beelink 'bash -s' << 'EOF'
-set -o errexit  # comment out to test behavior without immediate exit on error
+set -o errexit
 set -o nounset
 set -o pipefail
 
-# --- housekeeping ---
-TMP_DIR="$(mktemp -d)"
-cleanup() {
-  echo "CLEANUP: removing $TMP_DIR" >&2
-  rm -rf "$TMP_DIR"
-}
-trap cleanup EXIT INT TERM
+PATTERN="${1:-${PATTERN:-}}"
+TOP_N=5
 
-echo "PID: $$"
-echo "Script started at: $(date)"
+say() { printf '%s\n' "$*"; }
+warn() { printf 'WARN: %s\n' "$*" >&2; }
 
-# --- functions & return codes ---
-say() {
-  # prints to stdout
-  printf '%s\n' "$*"
-}
+# header
+say "Process parse test — pid, user, %cpu, %mem, cmd"
+say "Filter pattern: ${PATTERN:-<none>}"
+say "Showing top $TOP_N by CPU and by MEM"
 
-warn() {
-  # prints to stderr
-  printf 'WARN: %s\n' "$*" >&2
-}
+# gather processes using ps (portable-ish)
+# ps aux columns: USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND
+# We will print: PID USER %CPU %MEM COMMAND
+ps -eo pid,user,%cpu,%mem,comm --no-headers \
+  | awk '{
+      pid=$1; user=$2; cpu=$3; mem=$4;
+      # put the rest of the command (comm) back together in case it had spaces:
+      cmd=$5;
+      for (i=6;i<=NF;i++) cmd=cmd" "$i;
+      printf("%s\t%s\t%s\t%s\t%s\n", pid, user, cpu, mem, cmd);
+    }' \
+  > /tmp/process_list.$$ || warn "ps/awk pipeline failed"
 
-failing_function() {
-  # return non-zero but don't exit the script because we'll call it in subshell
-  return 42
-}
-
-# --- arrays and quoting ---
-items=("one" "two with spaces" "a'quote" 'b"doublequote' $'newline\nin\nitem')
-say "Array length: ${#items[@]}"
-for i in "${!items[@]}"; do
-  say "items[$i] -> '${items[$i]}'"
-done
-
-# --- command substitution and subshells ---
-out1="$(echo hello; echo world)"
-say "command substitution produced: <<<${out1}>>>"
-
-sub=$( ( failing_function || echo "subshell captured return:$?"; ) )
-say "subshell output: $sub"
-
-# --- here-doc / heredoc / multi-line content ---
-cat > "$TMP_DIR/sample.txt" <<'EOF'
-This is a heredoc test.
-It contains: $DONT_EXPAND_THIS and `backticks` and "quotes".
-A line with trailing spaces follows:␣
-EOF
-say "Wrote heredoc to $TMP_DIR/sample.txt (size: $(wc -c < "$TMP_DIR/sample.txt") bytes)"
-
-# --- read/while loop, pipeline, and I/O redirection ---
-say "Reading sample.txt lines:"
-nl -ba "$TMP_DIR/sample.txt" | while IFS= read -r line; do
-  # intentionally print to stderr when encountering 'heredoc'
-  if [[ $line == *heredoc* ]]; then
-    warn "found word 'heredoc' on line: $line"
-  fi
-  say "LINE: $line"
-done
-
-# --- background job & signal handling test ---
-( sleep 0.5; echo "background job done" ) & bgpid=$!
-say "Launched background job PID $bgpid"
-wait "$bgpid" || warn "background job failed with $?"
-
-# --- pipelines and pipefail demonstration ---
-false | true || say "pipefail: the pipeline returned non-zero (expected when pipefail set)"
-
-# --- quoting corner cases ---
-complex="a b 'c' \"d\" \$ \$\(x\)"
-say "Complex quoting test: $complex"
-say "Quoted expansion test (should NOT expand):" '$SOME_UNSET_VAR or $(echo no)'
-
-# --- conditional and case test ---
-file="$TMP_DIR/sample.txt"
-if [[ -r "$file" ]]; then
-  say "$file is readable"
-else
-  warn "$file is not readable"
+# optionally filter (case-insensitive)
+if [[ -n "$PATTERN" ]]; then
+  grep -i -- "$PATTERN" /tmp/process_list.$$ > /tmp/process_list_filtered.$$ || true
+  mv /tmp/process_list_filtered.$$ /tmp/process_list.$$ || true
 fi
 
-case "$OSTYPE" in
-  linux*) say "Running on Linux-ish: $OSTYPE" ;;
-  darwin*) say "Running on macOS-ish: $OSTYPE" ;;
-  *) say "Running on unknown OS: $OSTYPE" ;;
-esac
+# print a couple of summaries
+say
+say "Top $TOP_N by CPU:"
+sort -k3 -nr /tmp/process_list.$$ | head -n "$TOP_N" || true
 
-# --- getopts test (simulate flags) ---
-# Example: script can be called with -v to increase verbosity (not used when run raw)
-VERBOSE=0
-while getopts ":v-" opt; do
-  case $opt in
-    v) VERBOSE=$((VERBOSE+1));;
-    -) break;;
-    *) warn "Unknown option: $opt";;
-  esac
-done
-say "Verbosity level: $VERBOSE"
+say
+say "Top $TOP_N by MEM:"
+sort -k4 -nr /tmp/process_list.$$ | head -n "$TOP_N" || true
 
-# --- file descriptor / stderr vs stdout ---
-echo "this is stdout"
-echo "this is stderr" >&2
+say
+say "Count of matching processes:"
+wc -l < /tmp/process_list.$$ || true
 
-# --- produce a controlled non-zero exit at the end to test callers ---
-say "Now testing a function that returns non-zero when run in main shell:"
-failing_function || warn "failing_function returned $?"
+# demonstrate reading the file line-by-line and parsing fields
+say
+say "First $TOP_N lines (parsed in a loop):"
+n=0
+while IFS=$'\t' read -r pid user cpu mem cmd; do
+  n=$((n+1))
+  printf "%d) pid=%s user=%s cpu=%s mem=%s cmd=%s\n" "$n" "$pid" "$user" "$cpu" "$mem" "$cmd"
+  [[ $n -ge $TOP_N ]] && break
+done < /tmp/process_list.$$
 
-# --- final outputs and exit code ---
-echo "Final: writing a small file to $TMP_DIR/result.txt"
-printf 'ok\n' > "$TMP_DIR/result.txt"
-echo "Result file contents: $(cat "$TMP_DIR/result.txt")"
+# cleanup
+rm -f /tmp/process_list.$$ 2>/dev/null || true
 
-echo "Script finished at: $(date)"
-# exit non-zero if everything worked? we will exit 0 to show success; change to 99 to test failure.
+say
+say "Done."
 exit 0
 EOF
