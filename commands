@@ -1,4 +1,120 @@
 ssh beelink 'bash -s' << 'EOF'
-ls -al /sys/class/net/
-ps aux
+set -o errexit  # comment out to test behavior without immediate exit on error
+set -o nounset
+set -o pipefail
+
+# --- housekeeping ---
+TMP_DIR="$(mktemp -d)"
+cleanup() {
+  echo "CLEANUP: removing $TMP_DIR" >&2
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT INT TERM
+
+echo "PID: $$"
+echo "Script started at: $(date)"
+
+# --- functions & return codes ---
+say() {
+  # prints to stdout
+  printf '%s\n' "$*"
+}
+
+warn() {
+  # prints to stderr
+  printf 'WARN: %s\n' "$*" >&2
+}
+
+failing_function() {
+  # return non-zero but don't exit the script because we'll call it in subshell
+  return 42
+}
+
+# --- arrays and quoting ---
+items=("one" "two with spaces" "a'quote" 'b"doublequote' $'newline\nin\nitem')
+say "Array length: ${#items[@]}"
+for i in "${!items[@]}"; do
+  say "items[$i] -> '${items[$i]}'"
+done
+
+# --- command substitution and subshells ---
+out1="$(echo hello; echo world)"
+say "command substitution produced: <<<${out1}>>>"
+
+sub=$( ( failing_function || echo "subshell captured return:$?"; ) )
+say "subshell output: $sub"
+
+# --- here-doc / heredoc / multi-line content ---
+cat > "$TMP_DIR/sample.txt" <<'EOF'
+This is a heredoc test.
+It contains: $DONT_EXPAND_THIS and `backticks` and "quotes".
+A line with trailing spaces follows:␣
+EOF
+say "Wrote heredoc to $TMP_DIR/sample.txt (size: $(wc -c < "$TMP_DIR/sample.txt") bytes)"
+
+# --- read/while loop, pipeline, and I/O redirection ---
+say "Reading sample.txt lines:"
+nl -ba "$TMP_DIR/sample.txt" | while IFS= read -r line; do
+  # intentionally print to stderr when encountering 'heredoc'
+  if [[ $line == *heredoc* ]]; then
+    warn "found word 'heredoc' on line: $line"
+  fi
+  say "LINE: $line"
+done
+
+# --- background job & signal handling test ---
+( sleep 0.5; echo "background job done" ) & bgpid=$!
+say "Launched background job PID $bgpid"
+wait "$bgpid" || warn "background job failed with $?"
+
+# --- pipelines and pipefail demonstration ---
+false | true || say "pipefail: the pipeline returned non-zero (expected when pipefail set)"
+
+# --- quoting corner cases ---
+complex="a b 'c' \"d\" \$ \$\(x\)"
+say "Complex quoting test: $complex"
+say "Quoted expansion test (should NOT expand):" '$SOME_UNSET_VAR or $(echo no)'
+
+# --- conditional and case test ---
+file="$TMP_DIR/sample.txt"
+if [[ -r "$file" ]]; then
+  say "$file is readable"
+else
+  warn "$file is not readable"
+fi
+
+case "$OSTYPE" in
+  linux*) say "Running on Linux-ish: $OSTYPE" ;;
+  darwin*) say "Running on macOS-ish: $OSTYPE" ;;
+  *) say "Running on unknown OS: $OSTYPE" ;;
+esac
+
+# --- getopts test (simulate flags) ---
+# Example: script can be called with -v to increase verbosity (not used when run raw)
+VERBOSE=0
+while getopts ":v-" opt; do
+  case $opt in
+    v) VERBOSE=$((VERBOSE+1));;
+    -) break;;
+    *) warn "Unknown option: $opt";;
+  esac
+done
+say "Verbosity level: $VERBOSE"
+
+# --- file descriptor / stderr vs stdout ---
+echo "this is stdout"
+echo "this is stderr" >&2
+
+# --- produce a controlled non-zero exit at the end to test callers ---
+say "Now testing a function that returns non-zero when run in main shell:"
+failing_function || warn "failing_function returned $?"
+
+# --- final outputs and exit code ---
+echo "Final: writing a small file to $TMP_DIR/result.txt"
+printf 'ok\n' > "$TMP_DIR/result.txt"
+echo "Result file contents: $(cat "$TMP_DIR/result.txt")"
+
+echo "Script finished at: $(date)"
+# exit non-zero if everything worked? we will exit 0 to show success; change to 99 to test failure.
+exit 0
 EOF
