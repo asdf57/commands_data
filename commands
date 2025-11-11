@@ -1,1 +1,1 @@
-ps aux
+ssh beelink -- ps aux
