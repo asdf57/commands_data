@@ -1,1 +1,1 @@
-ssh beelink -- ls -al
+ps aux
