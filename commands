@@ -1,1 +1,1 @@
-ethtool --help
+ssh beelink -- ethtool --help
