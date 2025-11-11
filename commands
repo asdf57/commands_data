@@ -1,1 +1,1 @@
-ssh beelink — uptime
+ssh beelink -- uptime
