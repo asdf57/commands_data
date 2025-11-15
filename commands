@@ -1,1 +1,1 @@
-ssh beelink -- ps aux; uptime; whoami
+ssh beelink -- "ps aux; uptime; whoami"
