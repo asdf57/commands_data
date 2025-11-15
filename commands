@@ -1,1 +1,2 @@
+ls -al /homelab/inventory
 ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e should_wipe=true -l beelink
