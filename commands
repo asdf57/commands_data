@@ -1,1 +1,1 @@
-echo hi
+ssh beelink -- ps aux; uptime; whoami
