@@ -1,1 +1,5 @@
-ps aux
+for iface in $(ls /sys/class/net/); do
+  ethtool -s "$iface" wol g 2>/dev/null
+done
+
+sudo reboot
