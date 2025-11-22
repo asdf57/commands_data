@@ -1,1 +1,5 @@
-ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e should_wipe=true -l beelink
+for iface in $(ls /sys/class/net/); do
+  ethtool -s "$iface" wol g 2>/dev/null
+done
+
+reboot
