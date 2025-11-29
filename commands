@@ -1,1 +1,1 @@
-ssh beelink -- uptime
+ssh user1@beelink -- uptime
