@@ -1,1 +1,1 @@
-ssh user1@beelink -- uptime
+ansible-playbook -i inventory/inventory.yml ansible/plays/reboot.yml -e reboot_to_ipxe=true -l beelink
