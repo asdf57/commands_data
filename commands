@@ -1,1 +1,3 @@
-sudo reboot
+user: user1
+commands: |
+  echo test
