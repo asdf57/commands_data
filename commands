@@ -1,1 +1,1 @@
-ls -al /etc/ssh/**
+ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e should_wipe=true -l beelink -e ansible_python_interpreter=auto_silent
