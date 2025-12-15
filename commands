@@ -1,1 +1,1 @@
-ansible-playbook -i inventory/inventory.yml ansible/plays/provision.yml -e should_wipe=true -l beelink -e ansible_python_interpreter=/usr/bin/python
+ansible-playbook -i inventory/inventory.yml ansible/plays/reboot.yml -e reboot_to_ipxe=true -l beelink
