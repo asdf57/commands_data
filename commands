@@ -1,3 +1,4 @@
 user: user1
 commands: |
-  ls -al
+  whoami
+  ps aux
