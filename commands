@@ -1,3 +1,3 @@
 user: root
 commands: |
-  wall hello there
+  wall $(ps aux)
