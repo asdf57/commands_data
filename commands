@@ -1,3 +1,1 @@
-user: root
-commands: |
-  sudo reboot
+ps aux
